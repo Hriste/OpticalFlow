@@ -39,10 +39,8 @@ def adjustHeading(delta):
     
     if delta < 0:
         rightMotor.run(Adafruit_MotorHAT.FORWARD)
-        leftMotor.run(Adafruit_MotorHAT.BACKWARD)
     else:
         leftMotor.run(Adafruit_MotorHAT.FORWARD)
-        rightMotor.run(Adafruit_MotorHAT.BACKWARD)
     time.sleep(abs(delta))
 
 
@@ -55,18 +53,32 @@ def main():
     prev = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY) # Convert frame to Grayscale
     print("Beginning Obstacal Avoidance program...")
 
-    go = 1
-    while(go):
+    cnt = 1
+    hsv = np.zeros_like(frame1)
+    hsv[...,1] = 255
+    while(1):
         # move forwards a fixed small distance #
         forwards()
 
         retval, frame2 = cam.read()
+        filename = "frame_"+str(cnt)+".jpg"
+        cnt = cnt+1;
+        cv2.imwrite(filename,frame2)
         next = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY) # Convert frame to Grayscale
         
         # Caculate Optical Flow Vectors # 
         flow = cv2.calcOpticalFlowFarneback(prev, next, 0.5, 3, 15, 3, 5, 1.2, 0)
         dx = flow[:,:,0] # first channel
         dy = flow[:,:,1] # second channel
+
+        # Save Depth image
+        mag, ang = cv2.cartToPolar(flow[...,0],flow[...,1])
+        hsv[...,0] = ang*180/np.pi/2
+        hsv[...,2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+        bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        filename = "depth_"+str(cnt)+".jpg"
+        cv2.imwrite(filename, bgr)
+
 
         # Get sum of motion vectors in each half of the image #
         left_sum = 0
@@ -88,8 +100,11 @@ def main():
         #print(left_sum)
         #print(right_sum)
         balance = (left_sum - right_sum) / (left_sum + right_sum)
+        print(balance)
         adjustHeading(balance)
 
+        # update for next cycle
+        prev = next
 
 if __name__ == '__main__':
     main()
