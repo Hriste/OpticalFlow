@@ -105,7 +105,6 @@ def main():
 
         # update for next cycle
         prev = next
-
 if __name__ == '__main__':
     main()
 
